@@ -15,8 +15,9 @@ const WHO = { you: "Pasted", tool: "Tool", sub: "Subagent", agent: "Agent" };
 const FILTERS = [["all", "All"], ["you", "Pasted"], ["tool", "Tool"], ["sub", "Sub"], ["agent", "Agent"]];
 const SIZES = [72, 100, 140, 190, 260, 340];
 const GAP = 10;
-// Cached pictures and index.json. Images load only from paths under the app folder; a hidden folder doesn't reload the mod.
-const CACHE = `mods/${MOD}/.cache`;
+// Cached pictures and index.json, in the app's own data folder: images load only from paths under the app folder,
+// fs writes must resolve under it (a mod folder linked in from elsewhere doesn't), and it is outside the mod's hot reload.
+const CACHE = `data/${MOD}/cache`;
 const cacheDir = () => `${appHome()}/${CACHE}`;
 const indexFile = () => `${cacheDir()}/index.json`;
 // Copy and Preview use macOS tools.
@@ -136,7 +137,14 @@ export default class AgentGallery extends View {
     this.view = pref("view", "grid");
     this.zoom = Math.min(SIZES.length - 1, Math.max(0, pref("zoom", 2)));
     cx.spawn(async (cx) => {
-      await this.start();
+      try {
+        await this.start();
+      } catch (e) {
+        // Without the cache nothing can load; say why instead of looking for images forever.
+        this.startError = String(e?.message ?? e).replace(/^Error: /, "") || `Couldn't create ${CACHE}.`;
+        cx.notify();
+        return;
+      }
       this.ready = true;
       if (this.visible()) this.load(cx);
       cx.notify();
@@ -487,7 +495,8 @@ export default class AgentGallery extends View {
         .child(div().text_size(13).text_color(t.muted).child(title))
         .when(Boolean(hint), (el) => el.child(div().text_size(12).text_color(t.dim).child(hint)));
     let body;
-    if (!this.all && !this.target) body = empty("No agent in focus", "Click an agent's terminal; this panel follows it.");
+    if (this.startError) body = empty("Couldn't start the Images panel", this.startError);
+    else if (!this.all && !this.target) body = empty("No agent in focus", "Click an agent's terminal; this panel follows it.");
     else if (!list.length && s?.error) body = empty("Couldn't read this agent's images", s.error);
     else if (!list.length && !this.all && !s?.loaded) body = empty("Looking for images…");
     else if (!list.length) body = empty(this.filter === "all" ? "No images yet" : `No ${WHO[this.filter].toLowerCase()} images`,
