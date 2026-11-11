@@ -1,0 +1,37 @@
+#!/bin/sh
+# Posts an image to the herdr Images panel of the terminal this runs in.
+# Usage: herdr-post-image <image> [caption]
+set -eu
+
+usage() { echo "usage: herdr-post-image <image.png|jpg|gif|webp> [caption]" >&2; exit 2; }
+[ $# -ge 1 ] && [ $# -le 2 ] || usage
+src=$1
+caption=${2-}
+
+if [ -z "${HC_TERMINAL_ID-}" ]; then
+  echo "herdr-post-image: \$HC_TERMINAL_ID is not set; run it from an agent inside a herdr terminal" >&2
+  exit 1
+fi
+case $HC_TERMINAL_ID in */*|*..*|"") echo "herdr-post-image: odd terminal id: $HC_TERMINAL_ID" >&2; exit 1 ;; esac
+[ -f "$src" ] || { echo "herdr-post-image: no such file: $src" >&2; exit 1; }
+
+ext=$(printf '%s' "${src##*.}" | tr 'A-Z' 'a-z')
+case $ext in
+  png|gif|webp) ;;
+  jpg|jpeg) ext=jpg ;;
+  *) echo "herdr-post-image: $src: only png, jpg, gif and webp show in the panel; convert it first" >&2; exit 1 ;;
+esac
+
+dir="${XDG_CACHE_HOME:-$HOME/.cache}/agent-gallery/outbox/$HC_TERMINAL_ID"
+mkdir -p "$dir"
+ms=$(perl -MTime::HiRes=time -e 'printf "%d", time * 1000')
+# Names must sort after every earlier post: the panel resumes after the last name it read.
+last=$(ls "$dir" 2>/dev/null | grep -E '^[0-9]{13}-' | sort | tail -n 1 | cut -c1-13)
+[ -n "$last" ] && [ "$last" -ge "$ms" ] && ms=$((last + 1))
+base=$(basename "$src" | sed 's/\.[^.]*$//; s/[^A-Za-z0-9._-]/_/g' | cut -c1-60)
+name="$ms-$base"
+
+cp "$src" "$dir/$name.part"
+[ -n "$caption" ] && printf '%s' "$caption" > "$dir/$name.txt"
+mv "$dir/$name.part" "$dir/$name.$ext"
+echo "Posted to the Images panel of $HC_TERMINAL_ID: $dir/$name.$ext"
