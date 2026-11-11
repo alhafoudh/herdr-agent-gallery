@@ -1,6 +1,6 @@
 # Agent Gallery for herdr
 
-A [herdr](https://herdr.dev) mod: a side panel with the images in your agents' conversations (pasted, read by tools, from subagents, or posted by the agent itself), local or on other machines. Grid or list, zoom, and a viewer with previous/next, copy and Preview.
+A [herdr](https://herdr.dev) mod: a side panel with the images in your agents' conversations (pasted, read by tools, from subagents, or posted by the agent itself), local or on other machines. Grid or list, zoom, and a viewer with previous/next, copy, Preview and Open folder.
 
 ![Agent Gallery](preview.png)
 
@@ -23,7 +23,7 @@ It follows `RECIPE.md`. To do it by hand, copy `mods/agent-gallery/` to `~/.conf
 ## Requirements
 
 - `python3` (3.9+) on every machine whose agents you want to see.
-- macOS for Copy and Preview; the panel itself works anywhere herdr does.
+- macOS for Copy, Preview and Open folder; the panel itself works anywhere herdr does.
 - Agents: Claude Code (with subagents), Codex, pi.
 
 ## License

@@ -7,7 +7,7 @@ A side panel with every image in the focused agent's conversation: screenshots y
 Before installing, know that the mod:
 - runs programs: `python3` on the agent's machine (local or remote, through herdr's `exec`), `hc get`, and on macOS `sips`, `osascript` and `open`;
 - reads files outside its folder: agent transcripts under `~/.claude/projects`, `~/.claude/sessions`, `~/.codex/sessions` and `~/.pi/agent/sessions`, and the outbox at `~/.cache/agent-gallery/outbox/` on each agent's machine;
-- writes its cache to `mods/agent-gallery/.cache/` inside the app folder;
+- writes its cache to `data/agent-gallery/cache/` inside the app folder;
 - never reaches the network.
 
 ## What you see
@@ -27,11 +27,12 @@ The panel is a column, 360px by default (`mod.json` docks it on the right), on t
    - newest first. The source label is "Pasted", "Tool", the subagent's description (or type), or for posted images the caption the agent gave (else "Agent").
 4. **Footer**, only when images are listed and a refresh failed: 11px `dim` text, "Couldn't refresh: <reason>", or "N agents couldn't be read".
 
-Empty states are centered: an `image` icon with "No agent in focus" (hint: "Click an agent's terminal; this panel follows it."), "Looking for images…", "Couldn't read this agent's images" with the reason, or "No images yet" / "No pasted images" etc. with "Paste one into the agent with ⌘V and it shows up here."
+Empty states are centered: an `image` icon with "Couldn't start the Images panel" with the reason (the cache folder can't be made), "No agent in focus" (hint: "Click an agent's terminal; this panel follows it."), "Looking for images…", "Couldn't read this agent's images" with the reason, or "No images yet" / "No pasted images" etc. with "Paste one into the agent with ⌘V and it shows up here."
 
 **Viewer:** a dialog at 86% × 90% of the window.
-- A 44px top bar: "3 of 17", then source · agent · time · dimensions · size in `dim`, then four buttons:
+- A 44px top bar: "3 of 17", then source · agent · time · dimensions · size in `dim`, then five buttons:
   - copy file path (`link` icon);
+  - "Open folder" (`folder-open` icon, `raised`), which shows the cached file selected in Finder;
   - "Preview" (`raised`);
   - "Copy" (`solid`), whose icon turns into a check in `working` for 1.2 s;
   - close (`x`).
@@ -47,9 +48,10 @@ Empty states are centered: an `image` icon with "No agent in focus" (hint: "Clic
 - In the viewer:
   - ← → (or the side buttons) step through the images and wrap around;
   - Space or ⌘O opens Preview;
+  - ⌘⇧R shows the file in Finder (`open -R`);
   - ⌘C copies the image to the clipboard (non-PNG images are converted with `sips` first);
   - Esc closes the viewer.
-  Preview, Copy and their keys appear only on macOS.
+  Open folder, Preview, Copy and their keys appear only on macOS.
 - Clicking the agent name under a card (all-agents mode) runs `agent.focus` for it.
 - Filter, all agents, view and zoom are remembered (`localStorage`).
 - Commands for `keys.json` or `herdr-app do`, reaching a shown panel: `agent-gallery.view` (the newest image of the current filter in the viewer), `agent-gallery.zoom-in`, `agent-gallery.zoom-out`, `agent-gallery.grid`, `agent-gallery.list`. No keys are bound by default.
@@ -62,7 +64,7 @@ Empty states are centered: an `image` icon with "No agent in focus" (hint: "Clic
   - `main.js`, a single `View` that is both the panel and, when `props().viewer` is set, the viewer dialog (`openOverlay({ mod: "agent-gallery", kind: "dialog", width: 0.86, height: 0.9, props: { viewer: { index, items } } })`);
   - `extract.py`;
   - `mod.json` (`{ "place": "right", "size": 360 }`);
-  - 13 Lucide icons (ISC, license included).
+  - 14 Lucide icons (ISC, license included).
 - herdr calls:
   - data: `focused()`, `agents()`, `layout()` (to tell whether the panel is shown), `theme()`, `window().platform`;
   - programs and files: `exec(…, { on: machine, timeout: 120000 })`, `hc(["get", t, "--json"])` (pid, argv, cwd and `created_ms` of the terminal), `readTextFile`, `appHome()`;
@@ -75,7 +77,7 @@ Empty states are centered: an `image` icon with "No agent in focus" (hint: "Clic
   - pi's newest session for the cwd.
 
   It yields base64 images from `{type:"image", source:{type:"base64"}}`, `{type:"image", data}` and `input_image` data URLs. A `user` role marks them as pasted, tool results as tool. It skips `api-request-blob` lines and lines still being written.
-- **Cache:** `mods/agent-gallery/.cache/<sha256[:24]>.<ext>`, with the hash computed in the app, never taken from the remote. `index.json` holds per-transcript offsets, items and last-seen times.
+- **Cache:** `data/agent-gallery/cache/<sha256[:24]>.<ext>`, with the hash computed in the app, never taken from the remote. `index.json` holds per-transcript offsets, items and last-seen times.
 - **Outbox protocol** (what `herdr-post-image` writes):
   - files go to `~/.cache/agent-gallery/outbox/$HC_TERMINAL_ID/<13-digit ms>-<name>.<png|jpg|gif|webp>` on the agent's machine, with an optional `<same name>.txt` caption. Names must sort after every earlier post;
   - the panel reads only posts newer than the terminal's `created_ms`, then resumes after the last name it read.
@@ -101,15 +103,16 @@ The shipped tab bar (`tabs`) has hard-coded buttons, so this needs a clone and a
 
 ### Optional: agents posting images
 
-`bin/herdr-post-image` (POSIX sh, needs `perl` for milliseconds) and `skills/post-image/SKILL.md` sit next to this recipe. Copy them to `~/.local/bin/` and `~/.claude/skills/post-image/` on every machine that runs agents, then `chmod +x` the script. Agents then post with `herdr-post-image /abs/path.png "caption"`, and the image shows under **Agent** within a few seconds.
+`bin/herdr-post-image` (POSIX sh, needs `python3` for milliseconds, which the panel already needs on that machine) and `skills/post-image/SKILL.md` sit next to this recipe. Copy them to `~/.local/bin/` and `~/.claude/skills/post-image/` on every machine that runs agents, then `chmod +x` the script. Agents then post with `herdr-post-image /abs/path.png "caption"`, and the image shows under **Agent** within a few seconds.
 
 ## Watch out
 
-- `image()` loads only paths relative to the app folder (`~/.config/herdr-app`); absolute, `file://` and `../` paths draw nothing, without an error. That's why the cache sits in the mod's own hidden `.cache/` (hidden files don't trigger the mod's hot reload).
+- `image()` loads only paths relative to the app folder (`~/.config/herdr-app`); absolute, `file://` and `../` paths draw nothing, without an error. That's why the cache sits in the app's `data/agent-gallery/cache/`, outside the mod folder so it doesn't trigger the mod's hot reload.
+- `fs/promises` writes only where the real path is under the app folder. A mod folder that is a symlink (dotfiles) resolves elsewhere, so a cache inside it fails without an error. `data/` is always a real folder. If making the cache fails anyway, the panel shows the reason instead of "Looking for images…" forever.
 - `image()` has no fit mode: it fills its box and crops. Size every image yourself from its width and height (read from the PNG IHDR or JPEG SOF header).
 - An overlay's props arrive through `props()`, not `init`'s first argument. Reading the wrong one makes the dialog render the panel again, and every click stacks another dialog.
 - `exec` with `on:` fails with an **empty** error somewhere between 5.6 and 6.8 MB of stdout, below the documented 8 MiB. `extract.py` stops at 2 MB of image data per call and says `more`; posts over 1.5 MB come in pieces (`part: {name, offset}`) that the app joins. A read that fails without advancing would resend the same payload every tick and make the window stutter.
-- macOS `date` has no milliseconds; the post script uses perl, and bumps the timestamp past the last existing name so two posts in the same millisecond keep their order.
+- macOS `date` has no milliseconds; the post script uses `python3` (already required for `extract.py`), and bumps the timestamp past the last existing name so two posts in the same millisecond keep their order.
 - Posted images are deduplicated by file, not by hash: the same picture posted twice with two captions is two cards. Transcript images are deduplicated by hash.
 - One image in a transcript can't be split: an image bigger than the 2 MB budget still goes in one call. Claude Code keeps pasted images under about 5 MB, so this stays under the failure point.
 - The tab name of a fresh tab is "1"; skip numeric tab names in the subtitle.
@@ -122,6 +125,7 @@ The shipped tab bar (`tabs`) has hard-coded buttons, so this needs a clone and a
 - A subagent's image shows under **Sub**, labeled with the subagent's description.
 - `herdr-post-image shot.png "Caption"` run inside an agent's terminal shows the image under **Agent** with "Caption"; a 3 MB PNG from a remote machine arrives byte-identical (compare sha256 of the cached file and the source).
 - − / + change the thumbnail size, the list toggle switches views, the users button shows all agents with an agent name under each card, and clicking a name focuses that agent.
-- Clicking a thumbnail opens one large, uncropped image; ← → and ‹ › step and wrap; Esc closes; on macOS ⌘C puts the image on the clipboard and Space opens Preview.
+- Clicking a thumbnail opens one large, uncropped image; ← → and ‹ › step and wrap; Esc closes; on macOS ⌘C puts the image on the clipboard, Space opens Preview, and Open folder (or ⌘⇧R) shows the file selected in Finder.
+- With `mods/agent-gallery` a symlink to a folder outside the app folder, images still appear.
 - `herdr-app do agent-gallery.zoom-out` shrinks the thumbnails and `herdr-app do agent-gallery.view` opens the viewer on the newest image.
 - Closing the panel stops all reads (no `python3` processes on the agent's machine while hidden).

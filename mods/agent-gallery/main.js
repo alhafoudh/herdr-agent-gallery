@@ -15,8 +15,9 @@ const WHO = { you: "Pasted", tool: "Tool", sub: "Subagent", agent: "Agent" };
 const FILTERS = [["all", "All"], ["you", "Pasted"], ["tool", "Tool"], ["sub", "Sub"], ["agent", "Agent"]];
 const SIZES = [72, 100, 140, 190, 260, 340];
 const GAP = 10;
-// Cached pictures and index.json. Images load only from paths under the app folder; a hidden folder doesn't reload the mod.
-const CACHE = `mods/${MOD}/.cache`;
+// Cached pictures and index.json, in the app's own data folder: images load only from paths under the app folder,
+// fs writes must resolve under it (a mod folder linked in from elsewhere doesn't), and it is outside the mod's hot reload.
+const CACHE = `data/${MOD}/cache`;
 const cacheDir = () => `${appHome()}/${CACHE}`;
 const indexFile = () => `${cacheDir()}/index.json`;
 // Copy and Preview use macOS tools.
@@ -89,6 +90,7 @@ async function copyImage(path) {
 }
 
 const openInPreview = (path) => exec("open", ["-a", "Preview", path]);
+const revealInFinder = (path) => exec("open", ["-R", path]);
 
 // A press on a control is not a drag of the window around it.
 function control(el, onClick) {
@@ -136,7 +138,14 @@ export default class AgentGallery extends View {
     this.view = pref("view", "grid");
     this.zoom = Math.min(SIZES.length - 1, Math.max(0, pref("zoom", 2)));
     cx.spawn(async (cx) => {
-      await this.start();
+      try {
+        await this.start();
+      } catch (e) {
+        // Without the cache nothing can load; say why instead of looking for images forever.
+        this.startError = String(e?.message ?? e).replace(/^Error: /, "") || `Couldn't create ${CACHE}.`;
+        cx.notify();
+        return;
+      }
       this.ready = true;
       if (this.visible()) this.load(cx);
       cx.notify();
@@ -487,7 +496,8 @@ export default class AgentGallery extends View {
         .child(div().text_size(13).text_color(t.muted).child(title))
         .when(Boolean(hint), (el) => el.child(div().text_size(12).text_color(t.dim).child(hint)));
     let body;
-    if (!this.all && !this.target) body = empty("No agent in focus", "Click an agent's terminal; this panel follows it.");
+    if (this.startError) body = empty("Couldn't start the Images panel", this.startError);
+    else if (!this.all && !this.target) body = empty("No agent in focus", "Click an agent's terminal; this panel follows it.");
     else if (!list.length && s?.error) body = empty("Couldn't read this agent's images", s.error);
     else if (!list.length && !this.all && !s?.loaded) body = empty("Looking for images…");
     else if (!list.length) body = empty(this.filter === "all" ? "No images yet" : `No ${WHO[this.filter].toLowerCase()} images`,
@@ -549,11 +559,17 @@ export default class AgentGallery extends View {
         else if (k === "left" || k === "right") { cx.stop_propagation(); this.step(k === "left" ? -1 : 1, cx); }
         else if (mac() && k === "cmd-c") { cx.stop_propagation(); this.copy(im.path, key, cx); }
         else if (mac() && (k === "space" || k === "cmd-o")) { cx.stop_propagation(); openInPreview(im.path); }
+        else if (mac() && k === "cmd-shift-r") { cx.stop_propagation(); revealInFinder(im.path); }
       })
       .child(h_flex().h(44).pl(14).pr(8).gap(8).flex_none().items_center().bg(t.chrome).border_b(1).border_color(t.border)
         .child(div().flex_none().text_size(12).text_color(t.muted).child(`${this.i + 1} of ${n}`))
         .child(div().flex_1().min_w(0).truncate().text_size(12).text_color(t.dim).child(info))
         .child(iconButton(t, "ai-path", "link", (cx) => cx.write_to_clipboard(im.path), "Copy file path"))
+        .when(mac(), (el) => el.child(control(
+          h_flex().id("ai-folder").h(28).px(10).gap(6).items_center().rounded(6).text_size(12)
+            .bg(t.raised).text_color(t.foreground).hover((s) => s.bg(t.hover)).tooltip("Show in Finder  ⌘⇧R")
+            .child(icon("folder-open").size(13)).child("Open folder"),
+          () => revealInFinder(im.path))))
         .when(mac(), (el) => el.child(control(
           h_flex().id("ai-preview").h(28).px(10).gap(6).items_center().rounded(6).text_size(12)
             .bg(t.raised).text_color(t.foreground).hover((s) => s.bg(t.hover)).tooltip("Open in Preview  Space")
