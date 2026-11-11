@@ -90,6 +90,7 @@ async function copyImage(path) {
 }
 
 const openInPreview = (path) => exec("open", ["-a", "Preview", path]);
+const revealInFinder = (path) => exec("open", ["-R", path]);
 
 // A press on a control is not a drag of the window around it.
 function control(el, onClick) {
@@ -558,11 +559,17 @@ export default class AgentGallery extends View {
         else if (k === "left" || k === "right") { cx.stop_propagation(); this.step(k === "left" ? -1 : 1, cx); }
         else if (mac() && k === "cmd-c") { cx.stop_propagation(); this.copy(im.path, key, cx); }
         else if (mac() && (k === "space" || k === "cmd-o")) { cx.stop_propagation(); openInPreview(im.path); }
+        else if (mac() && k === "cmd-shift-r") { cx.stop_propagation(); revealInFinder(im.path); }
       })
       .child(h_flex().h(44).pl(14).pr(8).gap(8).flex_none().items_center().bg(t.chrome).border_b(1).border_color(t.border)
         .child(div().flex_none().text_size(12).text_color(t.muted).child(`${this.i + 1} of ${n}`))
         .child(div().flex_1().min_w(0).truncate().text_size(12).text_color(t.dim).child(info))
         .child(iconButton(t, "ai-path", "link", (cx) => cx.write_to_clipboard(im.path), "Copy file path"))
+        .when(mac(), (el) => el.child(control(
+          h_flex().id("ai-folder").h(28).px(10).gap(6).items_center().rounded(6).text_size(12)
+            .bg(t.raised).text_color(t.foreground).hover((s) => s.bg(t.hover)).tooltip("Show in Finder  ⌘⇧R")
+            .child(icon("folder-open").size(13)).child("Open folder"),
+          () => revealInFinder(im.path))))
         .when(mac(), (el) => el.child(control(
           h_flex().id("ai-preview").h(28).px(10).gap(6).items_center().rounded(6).text_size(12)
             .bg(t.raised).text_color(t.foreground).hover((s) => s.bg(t.hover)).tooltip("Open in Preview  Space")

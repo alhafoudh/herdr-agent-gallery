@@ -30,8 +30,9 @@ The panel is a column, 360px by default (`mod.json` docks it on the right), on t
 Empty states are centered: an `image` icon with "Couldn't start the Images panel" with the reason (the cache folder can't be made), "No agent in focus" (hint: "Click an agent's terminal; this panel follows it."), "Looking for images…", "Couldn't read this agent's images" with the reason, or "No images yet" / "No pasted images" etc. with "Paste one into the agent with ⌘V and it shows up here."
 
 **Viewer:** a dialog at 86% × 90% of the window.
-- A 44px top bar: "3 of 17", then source · agent · time · dimensions · size in `dim`, then four buttons:
+- A 44px top bar: "3 of 17", then source · agent · time · dimensions · size in `dim`, then five buttons:
   - copy file path (`link` icon);
+  - "Open folder" (`folder-open` icon, `raised`), which shows the cached file selected in Finder;
   - "Preview" (`raised`);
   - "Copy" (`solid`), whose icon turns into a check in `working` for 1.2 s;
   - close (`x`).
@@ -47,9 +48,10 @@ Empty states are centered: an `image` icon with "Couldn't start the Images panel
 - In the viewer:
   - ← → (or the side buttons) step through the images and wrap around;
   - Space or ⌘O opens Preview;
+  - ⌘⇧R shows the file in Finder (`open -R`);
   - ⌘C copies the image to the clipboard (non-PNG images are converted with `sips` first);
   - Esc closes the viewer.
-  Preview, Copy and their keys appear only on macOS.
+  Open folder, Preview, Copy and their keys appear only on macOS.
 - Clicking the agent name under a card (all-agents mode) runs `agent.focus` for it.
 - Filter, all agents, view and zoom are remembered (`localStorage`).
 - Commands for `keys.json` or `herdr-app do`, reaching a shown panel: `agent-gallery.view` (the newest image of the current filter in the viewer), `agent-gallery.zoom-in`, `agent-gallery.zoom-out`, `agent-gallery.grid`, `agent-gallery.list`. No keys are bound by default.
@@ -62,7 +64,7 @@ Empty states are centered: an `image` icon with "Couldn't start the Images panel
   - `main.js`, a single `View` that is both the panel and, when `props().viewer` is set, the viewer dialog (`openOverlay({ mod: "agent-gallery", kind: "dialog", width: 0.86, height: 0.9, props: { viewer: { index, items } } })`);
   - `extract.py`;
   - `mod.json` (`{ "place": "right", "size": 360 }`);
-  - 13 Lucide icons (ISC, license included).
+  - 14 Lucide icons (ISC, license included).
 - herdr calls:
   - data: `focused()`, `agents()`, `layout()` (to tell whether the panel is shown), `theme()`, `window().platform`;
   - programs and files: `exec(…, { on: machine, timeout: 120000 })`, `hc(["get", t, "--json"])` (pid, argv, cwd and `created_ms` of the terminal), `readTextFile`, `appHome()`;
@@ -123,7 +125,7 @@ The shipped tab bar (`tabs`) has hard-coded buttons, so this needs a clone and a
 - A subagent's image shows under **Sub**, labeled with the subagent's description.
 - `herdr-post-image shot.png "Caption"` run inside an agent's terminal shows the image under **Agent** with "Caption"; a 3 MB PNG from a remote machine arrives byte-identical (compare sha256 of the cached file and the source).
 - − / + change the thumbnail size, the list toggle switches views, the users button shows all agents with an agent name under each card, and clicking a name focuses that agent.
-- Clicking a thumbnail opens one large, uncropped image; ← → and ‹ › step and wrap; Esc closes; on macOS ⌘C puts the image on the clipboard and Space opens Preview.
+- Clicking a thumbnail opens one large, uncropped image; ← → and ‹ › step and wrap; Esc closes; on macOS ⌘C puts the image on the clipboard, Space opens Preview, and Open folder (or ⌘⇧R) shows the file selected in Finder.
 - With `mods/agent-gallery` a symlink to a folder outside the app folder, images still appear.
 - `herdr-app do agent-gallery.zoom-out` shrinks the thumbnails and `herdr-app do agent-gallery.view` opens the viewer on the newest image.
 - Closing the panel stops all reads (no `python3` processes on the agent's machine while hidden).
