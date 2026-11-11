@@ -103,7 +103,7 @@ The shipped tab bar (`tabs`) has hard-coded buttons, so this needs a clone and a
 
 ### Optional: agents posting images
 
-`bin/herdr-post-image` (POSIX sh, needs `perl` for milliseconds) and `skills/post-image/SKILL.md` sit next to this recipe. Copy them to `~/.local/bin/` and `~/.claude/skills/post-image/` on every machine that runs agents, then `chmod +x` the script. Agents then post with `herdr-post-image /abs/path.png "caption"`, and the image shows under **Agent** within a few seconds.
+`bin/herdr-post-image` (POSIX sh, needs `python3` for milliseconds, which the panel already needs on that machine) and `skills/post-image/SKILL.md` sit next to this recipe. Copy them to `~/.local/bin/` and `~/.claude/skills/post-image/` on every machine that runs agents, then `chmod +x` the script. Agents then post with `herdr-post-image /abs/path.png "caption"`, and the image shows under **Agent** within a few seconds.
 
 ## Watch out
 
@@ -112,7 +112,7 @@ The shipped tab bar (`tabs`) has hard-coded buttons, so this needs a clone and a
 - `image()` has no fit mode: it fills its box and crops. Size every image yourself from its width and height (read from the PNG IHDR or JPEG SOF header).
 - An overlay's props arrive through `props()`, not `init`'s first argument. Reading the wrong one makes the dialog render the panel again, and every click stacks another dialog.
 - `exec` with `on:` fails with an **empty** error somewhere between 5.6 and 6.8 MB of stdout, below the documented 8 MiB. `extract.py` stops at 2 MB of image data per call and says `more`; posts over 1.5 MB come in pieces (`part: {name, offset}`) that the app joins. A read that fails without advancing would resend the same payload every tick and make the window stutter.
-- macOS `date` has no milliseconds; the post script uses perl, and bumps the timestamp past the last existing name so two posts in the same millisecond keep their order.
+- macOS `date` has no milliseconds; the post script uses `python3` (already required for `extract.py`), and bumps the timestamp past the last existing name so two posts in the same millisecond keep their order.
 - Posted images are deduplicated by file, not by hash: the same picture posted twice with two captions is two cards. Transcript images are deduplicated by hash.
 - One image in a transcript can't be split: an image bigger than the 2 MB budget still goes in one call. Claude Code keeps pasted images under about 5 MB, so this stays under the failure point.
 - The tab name of a fresh tab is "1"; skip numeric tab names in the subtitle.

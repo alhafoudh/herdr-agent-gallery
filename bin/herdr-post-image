@@ -24,7 +24,8 @@ esac
 
 dir="${XDG_CACHE_HOME:-$HOME/.cache}/agent-gallery/outbox/$HC_TERMINAL_ID"
 mkdir -p "$dir"
-ms=$(perl -MTime::HiRes=time -e 'printf "%d", time * 1000')
+# python3 is already needed on every agent machine for the panel to read it; macOS date has no milliseconds.
+ms=$(python3 -c 'import time; print(int(time.time() * 1000))')
 # Names must sort after every earlier post: the panel resumes after the last name it read.
 last=$(ls "$dir" 2>/dev/null | grep -E '^[0-9]{13}-' | sort | tail -n 1 | cut -c1-13)
 [ -n "$last" ] && [ "$last" -ge "$ms" ] && ms=$((last + 1))
